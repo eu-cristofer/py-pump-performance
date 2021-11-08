@@ -1,4 +1,4 @@
-# py-pump-performance
+# Python Pump Performance
  Pump Performance is a set of tools to help engineers and technicians to asses the condition of an API 610 pump during its Performance and Mechanical Running Test trials.
 
 
@@ -13,7 +13,7 @@
 
 ## Technical specifications
 
-The solution was written in VBA and built in a Microsoft Office Add-in.
+The solution was written in Python 3.
 
 The performance acceptance criteria adopted in this project is the API 610 11th edition, Centrifugal pumps for petroleum, petrochemical and natural gas industries.
 
