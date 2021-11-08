@@ -13,7 +13,7 @@
 
 ## Technical specifications
 
-The solution was written in VBA and built in a Microsoft Office Add-in.
+The solution was written in Python 3.
 
 The performance acceptance criteria adopted in this project is the API 610 11th edition, Centrifugal pumps for petroleum, petrochemical and natural gas industries.
 
