@@ -6,118 +6,110 @@ Created on Fri Nov  5 15:54:53 2021
 @author: cristofer
 """
 
+import matplotlib.pyplot as plt
+import numpy as np
+from weakref import WeakKeyDictionary
+
+
+class FloatDescriptor:
+    """A floats descriptor"""
+    def __init__(self, default):
+        self.default = default
+        self.data = WeakKeyDictionary()
+
+    def __get__(self, instance, owner):
+        return self.data.get(instance, self.default)
+
+    def __set__(self, instance, value):
+        self.data[instance] = float(value)
+
+
+class NameDescriptor:
+    """A string descriptor"""
+    def __init__(self, default):
+        self.default = default
+        self.data = WeakKeyDictionary()
+
+    def __get__(self, instance, owner):
+        return self.data.get(instance, self.default)
+
+    def __set__(self, instance, value):
+        self.data[instance] = str(value)
+
+
 class Point:
-    
-    def __init__(self):
-        self._Name = None
-        self._Head = None
-        self._Flow = None
-        self._P3 = None
-        self._P0 = None
-        self._Temp = None
-        self._HydPower = None
-        self._NPSH3 = None
-        self._Rho = None
-        self._DinVisc = None
-        self._Speed = None
-        self._U0 = None
-        self._U3 = None
-        self._DriverPower = None
-        self._Efficiency = None
-        
-    @property
-    def Name(self):
-        """Get the total head in meters"""
-        return self._Name
-        
-    @Name.setter
-    def Name(self, value):
-        self._Name = str(value)
-    
-    @property
-    def Head(self):
-        """Get the total head in meters"""
-        return self._Head
-        
-    @Head.setter
-    def Head(self, value):
-        self._Head = float(value)
-    
-    @property
-    def Flow(self):
-        """Get the volumetric flowrate in cubic meters"""
-        return self._Flow
-        
-    @Flow.setter
-    def Flow(self, value):
-        self._Flow = float(value)
-        
-    @property
-    def P3(self):
-        """Get the outlet pressure in kgf/cm^2"""
-        return self._P3
-        
-    @P3.setter
-    def P3(self, value):
-        self._P3 = float(value)
-    
-    @property
-    def P0(self):
-        """Get the inlet pressure in kgf/cm^2"""
-        return self._P0
-        
-    @P0.setter
-    def P0(self, value):
-        self._P0 = float(value)
-        
+    Name = NameDescriptor(None)
+    Head = FloatDescriptor(None)
+    Flow = FloatDescriptor(None)
+    P0 = FloatDescriptor(None)
+    P3 = FloatDescriptor(None)
+    Temp = FloatDescriptor(None)
+    HydPower = FloatDescriptor(None)
+    NPSH3 = FloatDescriptor(None)
+    Rho = FloatDescriptor(None)
+    DinVisc = FloatDescriptor(None)
+    Speed = FloatDescriptor(None)
+    DriverPower = FloatDescriptor(None)
+    Efficiency = FloatDescriptor(None)
+
     def __repr__(self):
-        return self.Name + ' (Flowrate: %r)' % (self.Flow)
-        
+        return "%s [Flowrate: %s]" % (self.Name, self.Flow)
+
+    def __call__(self):
+        if self.Head is not None:
+            return (self.Head,self.Flow)
+        else:
+            return (self.Flow)
+
 
 class RatedPoint(Point):
-    
+
     def __init__(self, Head, Flow):
         super().__init__()
         self.Head = Head
         self.Flow = Flow
         self.Name = "Rated point"
-        
+
 
 class TestPoint(Point):
-    
+
+    U0 = FloatDescriptor(None)
+    U3 = FloatDescriptor(None)
+
     def __init__(self, Flow, P0, P3, Counter):
         super().__init__()
         self.Flow = Flow
         self.P0 = P0
         self.P3 = P3
-        self.Name = "Test point " + str(Counter)
-    
+        self.Name = "Test point #" + str(Counter)
+
 
 class Pump:
-    
+
+    Tag = NameDescriptor(None)
+    D0 = FloatDescriptor(None)
+    D3 = FloatDescriptor(None)
+    A0 = FloatDescriptor(None)
+    A3 = FloatDescriptor(None)
+    Z0 = FloatDescriptor(None)
+    Z3 = FloatDescriptor(None)
+    ZM0 = FloatDescriptor(None)
+    ZM3 = FloatDescriptor(None)
+
     def __init__(self, Tag="Generic"):
-        self._Tag = Tag
+        self.Tag = Tag
         self._RatedPoint = None
         self._TestPoints = []
         self._TestPointsCount = 0
-        
+
     @property
     def TestPointsCount(self):
         return self._TestPointsCount
-    
+
     @property
     def TestPoints(self):
         return self._TestPoints
-    
-    @property
-    def Tag(self):
-        """Get the pump tag"""
-        return self._Tag
-    
-    @Tag.setter
-    def Tag(self, Tag):
-        self._Tag = Tag
-        
+
     @property
     def RatedPoint(self):
         """Get the Rated point object"""
@@ -125,20 +117,38 @@ class Pump:
             return "You shall first create a Rated point"
         else:
             return self._RatedPoint
-    
+
+    def __repr__(self):
+        return "Pump TAG: %s" % self.Tag
+
     def AddRatedPoint(self, Head, Flow):
         self._RatedPoint = RatedPoint(Head, Flow)
-        
+
     def AddTestPoint(self, Flow, P0, P3):
         self._TestPoints.append(TestPoint(Flow, P0, P3, self._TestPointsCount))
         self._TestPointsCount += 1
-        
-    def __repr__(self):
-        return "Pump Tag: %s" % self._Tag
-    
-    
-    
-    
-    
-    
-    
+
+    def __UpdateNozzlesArea(self):
+        self.A0 = np.pi * self.D0**2 /4
+        self.A3 = np.pi * self.D3**2 /4
+
+    def NozzlesSize(self, D0, D3):
+        self.D0 = D0
+        self.D3 = D3
+        self.__UpdateNozzlesArea()
+
+    def Update(self):
+        if self.D0 is None or self.D3 is None:
+            return "Please add the Pump Inlet and Outlet diameters"
+
+        elif len(self._TestPoints) == 0:
+            return "Please add Test Points first"
+
+        else:
+            self.__UpdateNozzlesArea()
+            return "Values updated succesfully"
+
+        # Continuar a partir daqui
+
+    def Plot(self):
+        pass
